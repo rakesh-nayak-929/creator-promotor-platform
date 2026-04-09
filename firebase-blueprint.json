@@ -1,0 +1,125 @@
+{
+  "entities": {
+    "user": {
+      "title": "User Profile",
+      "description": "Base user profile for both creators and promoters",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["creator", "promoter", "admin"] },
+        "niche": { "type": "string" },
+        "bio": { "type": "string" },
+        "platformLinks": { "type": "array", "items": { "type": "string" } },
+        "followersCount": { "type": "number" },
+        "profileLink": { "type": "string" },
+        "audienceSize": { "type": "number" },
+        "engagementRate": { "type": "number" },
+        "budgetRange": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "collaboration": {
+      "title": "Collaboration Request",
+      "description": "A collaboration request between a promoter and a creator",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "promoterId": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "negotiating", "completed"] },
+        "budget": { "type": "number" },
+        "minBudget": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["promoterId", "creatorId", "status"]
+    },
+    "rating": {
+      "title": "User Rating",
+      "description": "A rating and review for a user",
+      "type": "object",
+      "properties": {
+        "fromId": { "type": "string" },
+        "toId": { "type": "string" },
+        "stars": { "type": "number" },
+        "review": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fromId", "toId", "stars", "createdAt"]
+    },
+    "message": {
+      "title": "Message",
+      "description": "A message in a collaboration chat",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "seen": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "text", "createdAt"]
+    },
+    "notification": {
+      "title": "Notification",
+      "description": "An in-app notification for a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["collaboration", "message", "status"] },
+        "link": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "createdAt"]
+    },
+    "publicRequest": {
+      "title": "Public Campaign Request",
+      "description": "A campaign request open to all creators",
+      "type": "object",
+      "properties": {
+        "promoterId": { "type": "string" },
+        "promoterName": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "budget": { "type": "number" },
+        "niche": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "filled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["promoterId", "title", "description", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profile documents"
+    },
+    "/collaborations/{collabId}": {
+      "schema": "collaboration",
+      "description": "Collaboration requests"
+    },
+    "/collaborations/{collabId}/messages/{messageId}": {
+      "schema": "message",
+      "description": "Messages within a collaboration"
+    },
+    "/ratings/{ratingId}": {
+      "schema": "rating",
+      "description": "User ratings and reviews"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "notification",
+      "description": "User notifications"
+    },
+    "/publicRequests/{requestId}": {
+      "schema": "publicRequest",
+      "description": "Public campaign requests"
+    }
+  }
+}
