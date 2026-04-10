@@ -1481,6 +1481,7 @@ const DashboardView = () => {
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
   const [isPublicRequestModalOpen, setIsPublicRequestModalOpen] = useState(false);
   const [acceptingRequestId, setAcceptingRequestId] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
     if (!profile) return;
@@ -1520,10 +1521,24 @@ const DashboardView = () => {
       setPublicRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
+    // Fetch notifications for message count
+    const notifQuery = query(
+      collection(db, 'notifications'),
+      where('userId', '==', user?.uid),
+      where('type', '==', 'message'),
+      orderBy('createdAt', 'desc'),
+      limit(50)
+    );
+
+    const unsubNotifs = onSnapshot(notifQuery, (snapshot) => {
+      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
     return () => {
       unsubUsers();
       unsubCollabs();
       unsubPublicReqs();
+      unsubNotifs();
     };
   }, [profile, user?.uid]);
 
@@ -1708,7 +1723,7 @@ const DashboardView = () => {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-zinc-500">Recent Messages</p>
-                        <h3 className="text-2xl font-bold text-zinc-900">12</h3>
+                        <h3 className="text-2xl font-bold text-zinc-900">{notifications.length}</h3>
                       </div>
                     </div>
                   </Card>
