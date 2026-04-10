@@ -27,7 +27,9 @@ import {
   Clock,
   Shield,
   Check,
-  CheckCheck
+  CheckCheck,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { 
   BrowserRouter as Router, 
@@ -54,6 +56,7 @@ import {
 import { 
   doc, 
   getDoc, 
+  getDocs,
   setDoc, 
   updateDoc,
   collection, 
@@ -66,6 +69,7 @@ import {
   limit
 } from 'firebase/firestore';
 import { useAuth, AuthProvider } from './AuthContext';
+import { ThemeProvider, useTheme } from './ThemeContext';
 import { ErrorBoundary } from './ErrorBoundary';
 import { cn, formatDate, formatChatTime, formatFullDateTime } from './utils';
 
@@ -98,10 +102,10 @@ const Button = ({
   size?: 'sm' | 'md' | 'lg';
 }) => {
   const variants = {
-    primary: 'bg-orange-600 text-white hover:bg-orange-700 shadow-lg shadow-orange-200',
-    secondary: 'bg-zinc-900 text-white hover:bg-zinc-800',
-    outline: 'border-2 border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50',
-    ghost: 'text-zinc-600 hover:bg-zinc-100'
+    primary: 'bg-orange-600 text-white hover:bg-orange-700 shadow-lg shadow-orange-200 dark:shadow-none',
+    secondary: 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white',
+    outline: 'border-2 border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-700 dark:hover:bg-zinc-800',
+    ghost: 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'
   };
   
   const sizes = {
@@ -126,17 +130,17 @@ const Button = ({
 };
 
 const Card = ({ children, className, ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
-  <div className={cn('bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden', className)} {...props}>
+  <div className={cn('bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm overflow-hidden', className)} {...props}>
     {children}
   </div>
 );
 
 const NotificationDropdown = ({ notifications, onClose, onMarkAsRead }: { notifications: any[], onClose: () => void, onMarkAsRead: (id: string) => void }) => {
   return (
-    <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden z-[100]">
-      <div className="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
-        <h3 className="font-bold text-zinc-900">Notifications</h3>
-        <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600">
+    <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden z-[100]">
+      <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-800/50">
+        <h3 className="font-bold text-zinc-900 dark:text-white">Notifications</h3>
+        <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
           <Plus className="rotate-45" size={20} />
         </button>
       </div>
@@ -146,8 +150,8 @@ const NotificationDropdown = ({ notifications, onClose, onMarkAsRead }: { notifi
             <div 
               key={n.id} 
               className={cn(
-                "p-4 border-b border-zinc-50 hover:bg-zinc-50 transition-colors cursor-pointer relative",
-                !n.read && "bg-orange-50/50"
+                "p-4 border-b border-zinc-50 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative",
+                !n.read && "bg-orange-50/50 dark:bg-orange-900/10"
               )}
               onClick={() => {
                 onMarkAsRead(n.id);
@@ -157,18 +161,18 @@ const NotificationDropdown = ({ notifications, onClose, onMarkAsRead }: { notifi
               <div className="flex gap-3">
                 <div className={cn(
                   "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                  n.type === 'collaboration' ? "bg-blue-100 text-blue-600" :
-                  n.type === 'message' ? "bg-green-100 text-green-600" :
-                  "bg-orange-100 text-orange-600"
+                  n.type === 'collaboration' ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" :
+                  n.type === 'message' ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" :
+                  "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
                 )}>
                   {n.type === 'collaboration' ? <Briefcase size={20} /> :
                    n.type === 'message' ? <MessageSquare size={20} /> :
                    <Clock size={20} />}
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-zinc-900 leading-tight">{n.title}</p>
-                  <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{n.message}</p>
-                  <p className="text-[10px] text-zinc-400 mt-2 font-medium">{formatFullDateTime(n.createdAt)}</p>
+                  <p className="text-sm font-bold text-zinc-900 dark:text-white leading-tight">{n.title}</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">{n.message}</p>
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-2 font-medium">{formatFullDateTime(n.createdAt)}</p>
                 </div>
               </div>
             </div>
@@ -190,6 +194,8 @@ const Navbar = ({ onAuthRequired }: { onAuthRequired?: (mode: 'signin' | 'signup
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
+  const { theme, toggleTheme } = useTheme();
+  
   useEffect(() => {
     if (!user) return;
 
@@ -228,23 +234,31 @@ const Navbar = ({ onAuthRequired }: { onAuthRequired?: (mode: 'signin' | 'signup
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-100">
+    <nav className="sticky top-0 z-50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">
               B
             </div>
-            <span className="text-xl font-bold tracking-tight text-zinc-900">BringingOut</span>
+            <span className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">BringingOut</span>
           </div>
           
           <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => navigate('/')} className="text-sm font-medium text-zinc-600 hover:text-orange-600 transition-colors">Explore</button>
-            <a href="#" className="text-sm font-medium text-zinc-600 hover:text-orange-600 transition-colors">How it works</a>
-            <a href="#" className="text-sm font-medium text-zinc-600 hover:text-orange-600 transition-colors">Pricing</a>
+            <button onClick={() => navigate('/')} className="text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-orange-600 dark:hover:text-orange-500 transition-colors">Explore</button>
+            <a href="#" className="text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-orange-600 dark:hover:text-orange-500 transition-colors">How it works</a>
+            <a href="#" className="text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-orange-600 dark:hover:text-orange-500 transition-colors">Pricing</a>
           </div>
 
           <div className="flex items-center gap-4">
+            <button
+              onClick={toggleTheme}
+              className="p-2 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+              title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            >
+              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+
             {user ? (
               <div className="flex items-center gap-4">
                 <div className="relative">
@@ -387,30 +401,30 @@ const AuthModal = ({
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+        className="bg-white dark:bg-zinc-900 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
       >
         <div className="p-8">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-zinc-900">
+              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
                 {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
               </h2>
-              <p className="text-sm text-zinc-500 mt-1">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                 {mode === 'signin' ? 'Sign in to continue your journey' : 'Join the community of creators'}
               </p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-              <Plus className="rotate-45 text-zinc-400" size={24} />
+            <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+              <Plus className="rotate-45 text-zinc-400 dark:text-zinc-500" size={24} />
             </button>
           </div>
 
           {/* Mode Toggle Tabs */}
-          <div className="flex p-1 bg-zinc-100 rounded-xl mb-8">
+          <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl mb-8">
             <button 
               onClick={() => setMode('signin')}
               className={cn(
                 "flex-1 py-2 text-sm font-semibold rounded-lg transition-all",
-                mode === 'signin' ? "bg-white text-orange-600 shadow-sm" : "text-zinc-500 hover:text-zinc-700"
+                mode === 'signin' ? "bg-white dark:bg-zinc-700 text-orange-600 dark:text-orange-400 shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
               )}
             >
               Sign In
@@ -419,7 +433,7 @@ const AuthModal = ({
               onClick={() => setMode('signup')}
               className={cn(
                 "flex-1 py-2 text-sm font-semibold rounded-lg transition-all",
-                mode === 'signup' ? "bg-white text-orange-600 shadow-sm" : "text-zinc-500 hover:text-zinc-700"
+                mode === 'signup' ? "bg-white dark:bg-zinc-700 text-orange-600 dark:text-orange-400 shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
               )}
             >
               Sign Up
@@ -430,7 +444,7 @@ const AuthModal = ({
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
-              className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium border border-red-100"
+              className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm font-medium border border-red-100 dark:border-red-900/30"
             >
               <div className="flex flex-col gap-2">
                 <div className="flex items-start gap-2">
@@ -458,36 +472,36 @@ const AuthModal = ({
           <form onSubmit={handleEmailAuth} className="space-y-4">
             {mode === 'signup' && (
               <div>
-                <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Full Name</label>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Full Name</label>
                 <input 
                   type="text" 
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 transition-all outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:border-orange-600 focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/20 transition-all outline-none"
                   placeholder="John Doe"
                 />
               </div>
             )}
             <div>
-              <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Email Address</label>
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Email Address</label>
               <input 
                 type="email" 
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 transition-all outline-none"
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:border-orange-600 focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/20 transition-all outline-none"
                 placeholder="you@example.com"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Password</label>
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Password</label>
               <input 
                 type="password" 
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 transition-all outline-none"
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:border-orange-600 focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/20 transition-all outline-none"
                 placeholder="••••••••"
               />
             </div>
@@ -499,27 +513,27 @@ const AuthModal = ({
 
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-zinc-100"></div>
+              <div className="w-full border-t border-zinc-100 dark:border-zinc-800"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-zinc-400">Or continue with</span>
+              <span className="px-2 bg-white dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500">Or continue with</span>
             </div>
           </div>
 
           <button 
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-zinc-200 hover:bg-zinc-50 transition-all font-medium text-zinc-700"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all font-medium text-zinc-700 dark:text-zinc-300"
           >
             <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
             Google
           </button>
 
-          <p className="mt-8 text-center text-sm text-zinc-500">
+          <p className="mt-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
             {mode === 'signin' ? "Don't have an account?" : "Already have an account?"}{' '}
             <button 
               onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-              className="text-orange-600 font-semibold hover:underline"
+              className="text-orange-600 dark:text-orange-500 font-semibold hover:underline"
             >
               {mode === 'signin' ? 'Sign Up' : 'Sign In'}
             </button>
@@ -534,7 +548,7 @@ const AuthModal = ({
 
 const LandingView = ({ onJoin }: { onJoin: (role: 'creator' | 'promoter' | null, mode: 'signin' | 'signup') => void }) => {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 transition-colors">
       <Navbar onAuthRequired={(mode) => onJoin(null, mode)} />
       
       {/* Hero Section */}
@@ -546,14 +560,14 @@ const LandingView = ({ onJoin }: { onJoin: (role: 'creator' | 'promoter' | null,
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <span className="inline-block px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-6">
+              <span className="inline-block px-4 py-1.5 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-full text-sm font-semibold mb-6">
                 The #1 Hub for Creators & Promoters
               </span>
-              <h1 className="text-6xl md:text-7xl font-bold tracking-tight text-zinc-900 mb-8 leading-[1.1]">
+              <h1 className="text-6xl md:text-7xl font-bold tracking-tight text-zinc-900 dark:text-white mb-8 leading-[1.1]">
                 Connect. Collaborate. <br />
                 <span className="text-orange-600">Grow Together.</span>
               </h1>
-              <p className="text-xl text-zinc-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+              <p className="text-xl text-zinc-600 dark:text-zinc-400 mb-10 max-w-2xl mx-auto leading-relaxed">
                 The bridge between visionaries and brands. Find the perfect match for your next campaign or content piece in minutes.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -571,11 +585,11 @@ const LandingView = ({ onJoin }: { onJoin: (role: 'creator' | 'promoter' | null,
                   Join as Promoter <ArrowRight size={20} />
                 </Button>
               </div>
-              <p className="mt-6 text-zinc-500">
+              <p className="mt-6 text-zinc-500 dark:text-zinc-400">
                 Already have an account?{' '}
                 <button 
                   onClick={() => onJoin(null, 'signin')}
-                  className="text-orange-600 font-bold hover:underline"
+                  className="text-orange-600 dark:text-orange-500 font-bold hover:underline"
                 >
                   Sign In here
                 </button>
@@ -683,7 +697,7 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-4 transition-colors">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -691,7 +705,7 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
       >
         <Card className="p-8 md:p-12 relative overflow-hidden">
           {/* Progress Bar */}
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-zinc-100">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-zinc-100 dark:bg-zinc-800">
             <motion.div 
               className="h-full bg-orange-600"
               initial={{ width: 0 }}
@@ -700,13 +714,13 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
           </div>
 
           <div className="text-center mb-10">
-            <span className="text-xs font-bold text-orange-600 uppercase tracking-widest mb-2 block">
+            <span className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-widest mb-2 block">
               Step {step} of {totalSteps}
             </span>
-            <h2 className="text-3xl font-bold text-zinc-900 mb-2">
+            <h2 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
               {step === 1 ? "Choose Your Path" : step === 2 ? "Tell Us More" : "Final Details"}
             </h2>
-            <p className="text-zinc-600">
+            <p className="text-zinc-600 dark:text-zinc-400">
               {step === 1 ? "Are you here to create or to promote?" : "Help others find you by sharing your niche."}
             </p>
           </div>
@@ -725,33 +739,33 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
                     onClick={() => setRole('creator')}
                     className={cn(
                       "p-6 rounded-2xl border-2 transition-all text-center group",
-                      role === 'creator' ? "border-orange-600 bg-orange-50" : "border-zinc-100 hover:border-zinc-200"
+                      role === 'creator' ? "border-orange-600 bg-orange-50 dark:bg-orange-900/20" : "border-zinc-100 dark:border-zinc-800 hover:border-zinc-200 dark:hover:border-zinc-700"
                     )}
                   >
-                    <div className={cn("w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center transition-colors", role === 'creator' ? "bg-orange-600 text-white" : "bg-zinc-100 text-zinc-500 group-hover:bg-zinc-200")}>
+                    <div className={cn("w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center transition-colors", role === 'creator' ? "bg-orange-600 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700")}>
                       <Users size={24} />
                     </div>
-                    <span className="font-bold block">Creator</span>
-                    <span className="text-xs text-zinc-500">I make content</span>
+                    <span className="font-bold block dark:text-white">Creator</span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">I make content</span>
                   </button>
                   <button
                     onClick={() => setRole('promoter')}
                     className={cn(
                       "p-6 rounded-2xl border-2 transition-all text-center group",
-                      role === 'promoter' ? "border-orange-600 bg-orange-50" : "border-zinc-100 hover:border-zinc-200"
+                      role === 'promoter' ? "border-orange-600 bg-orange-50 dark:bg-orange-900/20" : "border-zinc-100 dark:border-zinc-800 hover:border-zinc-200 dark:hover:border-zinc-700"
                     )}
                   >
-                    <div className={cn("w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center transition-colors", role === 'promoter' ? "bg-orange-600 text-white" : "bg-zinc-100 text-zinc-500 group-hover:bg-zinc-200")}>
+                    <div className={cn("w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center transition-colors", role === 'promoter' ? "bg-orange-600 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700")}>
                       <Bell size={24} />
                     </div>
-                    <span className="font-bold block">Promoter</span>
-                    <span className="text-xs text-zinc-500">I promote brands</span>
+                    <span className="font-bold block dark:text-white">Promoter</span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">I promote brands</span>
                   </button>
                 </div>
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
                   <div className="flex gap-3">
-                    <Info size={20} className="text-blue-600 shrink-0" />
-                    <p className="text-xs text-blue-800 leading-relaxed">
+                    <Info size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                    <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
                       <strong>Tip:</strong> Creators can showcase their portfolio and metrics, while Promoters focus on campaign requirements.
                     </p>
                   </div>
@@ -772,21 +786,21 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
               >
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Your Niche</label>
+                    <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Your Niche</label>
                     <input
                       type="text"
                       placeholder="e.g. Tech, Lifestyle, Gaming"
-                      className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none transition-all"
+                      className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none transition-all"
                       value={niche}
                       onChange={(e) => setNiche(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Short Bio</label>
+                    <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Short Bio</label>
                     <textarea
                       placeholder="Tell us about yourself..."
                       rows={3}
-                      className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none transition-all resize-none"
+                      className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none transition-all resize-none"
                       value={bio}
                       onChange={(e) => setBio(e.target.value)}
                     />
@@ -809,13 +823,13 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
               >
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Location</label>
+                    <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Location</label>
                     <div className="relative">
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" size={18} />
                       <input
                         type="text"
                         placeholder="e.g. New York, USA"
-                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none transition-all"
+                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none transition-all"
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
                       />
@@ -825,21 +839,21 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
                   {role === 'creator' && (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Followers Count</label>
+                        <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Followers Count</label>
                         <input
                           type="number"
                           placeholder="e.g. 10000"
-                          className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none transition-all"
+                          className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none transition-all"
                           value={followersCount}
                           onChange={(e) => setFollowersCount(e.target.value)}
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Main Profile Link</label>
+                        <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Main Profile Link</label>
                         <input
                           type="url"
                           placeholder="https://instagram.com/yourprofile"
-                          className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none transition-all"
+                          className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none transition-all"
                           value={profileLink}
                           onChange={(e) => setProfileLink(e.target.value)}
                         />
@@ -847,8 +861,8 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
                     </div>
                   )}
 
-                  <div className="p-4 bg-orange-50 rounded-xl border border-orange-100">
-                    <p className="text-xs text-orange-800 leading-relaxed">
+                  <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-100 dark:border-orange-800">
+                    <p className="text-xs text-orange-800 dark:text-orange-300 leading-relaxed">
                       <strong>Final Tip:</strong> A complete profile gets 3x more collaboration requests. Make sure your bio highlights your unique value!
                     </p>
                   </div>
@@ -913,57 +927,57 @@ const CollaborationModal = ({ targetUser, onClose }: { targetUser: any; onClose:
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden"
+        className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden"
       >
         <div className="p-8">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h3 className="text-2xl font-bold text-zinc-900">Send Collaboration Offer</h3>
-              <p className="text-zinc-500">To {targetUser.displayName}</p>
+              <h3 className="text-2xl font-bold text-zinc-900 dark:text-white">Send Collaboration Offer</h3>
+              <p className="text-zinc-500 dark:text-zinc-400">To {targetUser.displayName}</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-              <Plus className="rotate-45 text-zinc-400" size={24} />
+            <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+              <Plus className="rotate-45 text-zinc-400 dark:text-zinc-500" size={24} />
             </button>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Campaign Title</label>
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Campaign Title</label>
               <input
                 type="text"
                 placeholder="e.g. Summer Collection Shoutout"
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Description & Requirements</label>
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Description & Requirements</label>
               <textarea
                 placeholder="Describe what you're looking for..."
                 rows={4}
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none resize-none"
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none resize-none"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Budget ($)</label>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Budget ($)</label>
                 <input
                   type="number"
                   placeholder="0.00"
-                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Min. Budget ($)</label>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Min. Budget ($)</label>
                 <input
                   type="number"
                   placeholder="0.00"
-                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                   value={minBudget}
                   onChange={(e) => setMinBudget(e.target.value)}
                 />
@@ -976,6 +990,166 @@ const CollaborationModal = ({ targetUser, onClose }: { targetUser: any; onClose:
             <Button className="flex-1" onClick={handleSubmit} disabled={!title || !description || loading}>
               {loading ? "Sending..." : "Send Offer"}
             </Button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const UserProfileModal = ({ userId, onClose }: { userId: string; onClose: () => void }) => {
+  const [userProfile, setUserProfile] = useState<any | null>(null);
+  const [ratings, setRatings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'users', userId));
+        if (docSnap.exists()) {
+          setUserProfile({ id: docSnap.id, ...docSnap.data() });
+        }
+
+        // Fetch ratings
+        const ratingsQuery = query(
+          collection(db, 'ratings'),
+          where('toId', '==', userId),
+          orderBy('createdAt', 'desc')
+        );
+        const ratingsSnap = await getDocs(ratingsQuery);
+        setRatings(ratingsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (err) {
+        console.error("Error fetching user profile or ratings:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [userId]);
+
+  const averageRating = ratings.length > 0 
+    ? (ratings.reduce((acc, curr) => acc + curr.stars, 0) / ratings.length).toFixed(1)
+    : null;
+
+  if (loading) return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4">
+        <div className="w-10 h-10 border-4 border-orange-100 dark:border-orange-900/30 border-t-orange-600 rounded-full animate-spin"></div>
+        <p className="text-zinc-500 dark:text-zinc-400 font-medium">Loading profile...</p>
+      </div>
+    </div>
+  );
+
+  if (!userProfile) return null;
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden"
+      >
+        <div className="p-8">
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex items-center gap-4">
+              <img src={userProfile.photoURL} className="w-16 h-16 rounded-2xl object-cover border-2 border-zinc-100 dark:border-zinc-800" referrerPolicy="no-referrer" />
+              <div>
+                <h3 className="text-2xl font-bold text-zinc-900 dark:text-white">{userProfile.displayName}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">{userProfile.email}</p>
+                  {averageRating && (
+                    <div className="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/20 px-1.5 py-0.5 rounded text-yellow-700 dark:text-yellow-400 text-[10px] font-bold">
+                      <Star size={10} className="fill-yellow-700 dark:fill-yellow-400" />
+                      {averageRating}
+                    </div>
+                  )}
+                </div>
+                <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-[10px] font-bold rounded-full uppercase">
+                  {userProfile.role}
+                </span>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+              <Plus className="rotate-45 text-zinc-400 dark:text-zinc-500" size={24} />
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Bio</label>
+              <p className="text-zinc-700 dark:text-zinc-300 mt-1 text-sm">{userProfile.bio || "No bio set."}</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Username</label>
+                <p className="text-zinc-900 dark:text-white font-semibold text-sm">{userProfile.displayName}</p>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Niche</label>
+                <p className="text-zinc-900 dark:text-white font-semibold text-sm">{userProfile.niche}</p>
+              </div>
+            </div>
+
+            {userProfile.role === 'creator' && (
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Audience Stats</label>
+                <div className="flex gap-4 mt-1">
+                  <div className="bg-zinc-50 dark:bg-zinc-800 px-3 py-2 rounded-lg border border-zinc-100 dark:border-zinc-700 flex-1">
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold">Followers</p>
+                    <p className="text-sm font-bold text-zinc-900 dark:text-white">{(userProfile.followersCount || 0).toLocaleString()}</p>
+                  </div>
+                  <div className="bg-zinc-50 dark:bg-zinc-800 px-3 py-2 rounded-lg border border-zinc-100 dark:border-zinc-700 flex-1">
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold">Engagement</p>
+                    <p className="text-sm font-bold text-zinc-900 dark:text-white">{userProfile.engagementRate || 0}%</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {userProfile.profileLink && (
+              <a 
+                href={userProfile.profileLink} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Globe size={18} className="text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium dark:text-zinc-200">View Portfolio</span>
+                </div>
+                <ExternalLink size={14} className="text-zinc-400 dark:text-zinc-500" />
+              </a>
+            )}
+
+            {ratings.length > 0 && (
+              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-3 block">Recent Reviews</label>
+                <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  {ratings.map((r) => (
+                    <div key={r.id} className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700">
+                      <div className="flex justify-between items-center mb-1">
+                        <div className="flex gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star 
+                              key={i} 
+                              size={10} 
+                              className={cn(i < r.stars ? "text-yellow-400 fill-yellow-400" : "text-zinc-200 dark:text-zinc-700")} 
+                            />
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-zinc-400 dark:text-zinc-500">{formatDate(r.createdAt)}</span>
+                      </div>
+                      {r.review && <p className="text-xs text-zinc-600 dark:text-zinc-400 italic">"{r.review}"</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8">
+            <Button className="w-full" onClick={onClose}>Close Profile</Button>
           </div>
         </div>
       </motion.div>
@@ -998,6 +1172,9 @@ const PublicRequestModal = ({ onClose }: { onClose: () => void }) => {
       await addDoc(collection(db, 'publicRequests'), {
         promoterId: user.uid,
         promoterName: profile?.displayName || 'A Promoter',
+        promoterPhoto: profile?.photoURL || '',
+        promoterRole: profile?.role || 'promoter',
+        promoterEmail: profile?.email || '',
         title,
         description,
         budget: Number(budget),
@@ -1018,57 +1195,57 @@ const PublicRequestModal = ({ onClose }: { onClose: () => void }) => {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden"
+        className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden"
       >
         <div className="p-8">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h3 className="text-2xl font-bold text-zinc-900">Post Public Campaign</h3>
-              <p className="text-zinc-500">Open this request to all creators</p>
+              <h3 className="text-2xl font-bold text-zinc-900 dark:text-white">Post Public Campaign</h3>
+              <p className="text-zinc-500 dark:text-zinc-400">Open this request to all creators</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-              <Plus className="rotate-45 text-zinc-400" size={24} />
+            <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+              <Plus className="rotate-45 text-zinc-400 dark:text-zinc-500" size={24} />
             </button>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Campaign Title</label>
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Campaign Title</label>
               <input
                 type="text"
                 placeholder="e.g. Need 5 Creators for Summer Launch"
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Description & Requirements</label>
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Description & Requirements</label>
               <textarea
                 placeholder="Describe the campaign and what you expect from creators..."
                 rows={4}
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none resize-none"
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none resize-none"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Budget ($)</label>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Budget ($)</label>
                 <input
                   type="number"
                   placeholder="0.00"
-                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Target Niche</label>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Target Niche</label>
                 <input
                   type="text"
                   placeholder="e.g. Fashion"
-                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                   value={niche}
                   onChange={(e) => setNiche(e.target.value)}
                 />
@@ -1118,16 +1295,16 @@ const RatingModal = ({ targetUser, onClose }: { targetUser: any; onClose: () => 
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden"
+        className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden"
       >
         <div className="p-8">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h3 className="text-2xl font-bold text-zinc-900">Rate {targetUser.displayName}</h3>
-              <p className="text-zinc-500">Share your experience with this user</p>
+              <h3 className="text-2xl font-bold text-zinc-900 dark:text-white">Rate {targetUser.displayName}</h3>
+              <p className="text-zinc-500 dark:text-zinc-400">Share your experience with this user</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-              <Plus className="rotate-45 text-zinc-400" size={24} />
+            <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+              <Plus className="rotate-45 text-zinc-400 dark:text-zinc-500" size={24} />
             </button>
           </div>
 
@@ -1143,7 +1320,7 @@ const RatingModal = ({ targetUser, onClose }: { targetUser: any; onClose: () => 
                     size={40} 
                     className={cn(
                       "transition-colors",
-                      s <= stars ? "text-yellow-400 fill-yellow-400" : "text-zinc-200"
+                      s <= stars ? "text-yellow-400 fill-yellow-400" : "text-zinc-200 dark:text-zinc-700"
                     )} 
                   />
                 </button>
@@ -1151,11 +1328,11 @@ const RatingModal = ({ targetUser, onClose }: { targetUser: any; onClose: () => 
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Review (Optional)</label>
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Review (Optional)</label>
               <textarea
                 placeholder="How was the collaboration? (optional)"
                 rows={4}
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none resize-none"
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none resize-none"
                 value={review}
                 onChange={(e) => setReview(e.target.value)}
               />
@@ -1482,6 +1659,7 @@ const DashboardView = () => {
   const [isPublicRequestModalOpen, setIsPublicRequestModalOpen] = useState(false);
   const [acceptingRequestId, setAcceptingRequestId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -1620,7 +1798,7 @@ const DashboardView = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors">
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1631,7 +1809,7 @@ const DashboardView = () => {
               onClick={() => { setActiveTab('overview'); setSelectedCollab(null); }}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all",
-                activeTab === 'overview' ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "text-zinc-600 hover:bg-white"
+                activeTab === 'overview' ? "bg-orange-600 text-white shadow-lg shadow-orange-100 dark:shadow-none" : "text-zinc-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-900"
               )}
             >
               <LayoutDashboard size={20} /> Overview
@@ -1640,7 +1818,7 @@ const DashboardView = () => {
               onClick={() => { setActiveTab('explore'); setSelectedCollab(null); }}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all",
-                activeTab === 'explore' ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "text-zinc-600 hover:bg-white"
+                activeTab === 'explore' ? "bg-orange-600 text-white shadow-lg shadow-orange-100 dark:shadow-none" : "text-zinc-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-900"
               )}
             >
               <Search size={20} /> Explore
@@ -1649,7 +1827,7 @@ const DashboardView = () => {
               onClick={() => { setActiveTab('requests'); setSelectedCollab(null); }}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all",
-                activeTab === 'requests' ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "text-zinc-600 hover:bg-white"
+                activeTab === 'requests' ? "bg-orange-600 text-white shadow-lg shadow-orange-100 dark:shadow-none" : "text-zinc-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-900"
               )}
             >
               <Globe size={20} /> Public Requests
@@ -1658,7 +1836,7 @@ const DashboardView = () => {
               onClick={() => { setActiveTab('collaborations'); setSelectedCollab(null); }}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all",
-                activeTab === 'collaborations' ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "text-zinc-600 hover:bg-white"
+                activeTab === 'collaborations' ? "bg-orange-600 text-white shadow-lg shadow-orange-100 dark:shadow-none" : "text-zinc-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-900"
               )}
             >
               <Briefcase size={20} /> Collaborations
@@ -1667,7 +1845,7 @@ const DashboardView = () => {
               onClick={() => { setActiveTab('messages'); }}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all",
-                activeTab === 'messages' ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "text-zinc-600 hover:bg-white"
+                activeTab === 'messages' ? "bg-orange-600 text-white shadow-lg shadow-orange-100 dark:shadow-none" : "text-zinc-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-900"
               )}
             >
               <MessageSquare size={20} /> Messages
@@ -1676,7 +1854,7 @@ const DashboardView = () => {
               onClick={() => { setActiveTab('profile'); setSelectedCollab(null); }}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all",
-                activeTab === 'profile' ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "text-zinc-600 hover:bg-white"
+                activeTab === 'profile' ? "bg-orange-600 text-white shadow-lg shadow-orange-100 dark:shadow-none" : "text-zinc-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-900"
               )}
             >
               <User size={20} /> My Profile
@@ -1688,42 +1866,42 @@ const DashboardView = () => {
             {activeTab === 'overview' && (
               <div className="space-y-8">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-zinc-900">Dashboard Overview</h2>
-                  <span className="text-sm text-zinc-500">Welcome back, {profile?.displayName}</span>
+                  <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Dashboard Overview</h2>
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">Welcome back, {profile?.displayName}</span>
                 </div>
 
                 {/* Widgets */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Card className="p-6 bg-white border-l-4 border-l-orange-600">
+                  <Card className="p-6 bg-white dark:bg-zinc-900 border-l-4 border-l-orange-600">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
+                      <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center text-orange-600 dark:text-orange-500">
                         <Briefcase size={24} />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-zinc-500">Active Collabs</p>
-                        <h3 className="text-2xl font-bold text-zinc-900">{stats.active}</h3>
+                        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Active Collabs</p>
+                        <h3 className="text-2xl font-bold text-zinc-900 dark:text-white">{stats.active}</h3>
                       </div>
                     </div>
                   </Card>
-                  <Card className="p-6 bg-white border-l-4 border-l-yellow-500">
+                  <Card className="p-6 bg-white dark:bg-zinc-900 border-l-4 border-l-yellow-500">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-600">
+                      <div className="w-12 h-12 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl flex items-center justify-center text-yellow-600 dark:text-yellow-500">
                         <Clock size={24} />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-zinc-500">Pending Offers</p>
-                        <h3 className="text-2xl font-bold text-zinc-900">{stats.pending}</h3>
+                        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Pending Offers</p>
+                        <h3 className="text-2xl font-bold text-zinc-900 dark:text-white">{stats.pending}</h3>
                       </div>
                     </div>
                   </Card>
-                  <Card className="p-6 bg-white border-l-4 border-l-blue-500">
+                  <Card className="p-6 bg-white dark:bg-zinc-900 border-l-4 border-l-blue-500">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                      <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-500">
                         <MessageSquare size={24} />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-zinc-500">Recent Messages</p>
-                        <h3 className="text-2xl font-bold text-zinc-900">{notifications.length}</h3>
+                        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Recent Messages</p>
+                        <h3 className="text-2xl font-bold text-zinc-900 dark:text-white">{notifications.length}</h3>
                       </div>
                     </div>
                   </Card>
@@ -1732,38 +1910,38 @@ const DashboardView = () => {
                 {/* Recent Activity */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <Card className="p-6">
-                    <h3 className="text-lg font-bold text-zinc-900 mb-6">Recent Collaborations</h3>
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-6">Recent Collaborations</h3>
                     <div className="space-y-4">
                       {collaborations.slice(0, 3).map(c => (
-                        <div key={c.id} className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+                        <div key={c.id} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-zinc-100">
+                            <div className="w-10 h-10 bg-white dark:bg-zinc-900 rounded-lg flex items-center justify-center border border-zinc-100 dark:border-zinc-800">
                               <Briefcase size={18} className="text-zinc-400" />
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-zinc-900 truncate max-w-[150px]">{c.title}</p>
-                              <p className="text-[10px] text-zinc-500 uppercase font-bold">{c.status}</p>
+                              <p className="text-sm font-bold text-zinc-900 dark:text-white truncate max-w-[150px]">{c.title}</p>
+                              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-bold">{c.status}</p>
                             </div>
                           </div>
                           <Button size="sm" variant="ghost" onClick={() => setActiveTab('collaborations')}>View</Button>
                         </div>
                       ))}
                       {collaborations.length === 0 && (
-                        <p className="text-center py-8 text-zinc-400 text-sm italic">No recent activity</p>
+                        <p className="text-center py-8 text-zinc-400 dark:text-zinc-500 text-sm italic">No recent activity</p>
                       )}
                     </div>
                   </Card>
 
                   <Card className="p-6">
-                    <h3 className="text-lg font-bold text-zinc-900 mb-6">Explore Recommendations</h3>
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-6">Explore Recommendations</h3>
                     <div className="space-y-4">
                       {users.slice(0, 3).map(u => (
-                        <div key={u.id} className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+                        <div key={u.id} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
                           <div className="flex items-center gap-3">
                             <img src={u.photoURL} className="w-10 h-10 rounded-lg object-cover" />
                             <div>
-                              <p className="text-sm font-bold text-zinc-900">{u.displayName}</p>
-                              <p className="text-[10px] text-zinc-500 uppercase font-bold">{u.niche}</p>
+                              <p className="text-sm font-bold text-zinc-900 dark:text-white">{u.displayName}</p>
+                              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-bold">{u.niche}</p>
                             </div>
                           </div>
                           <Button size="sm" variant="ghost" onClick={() => setActiveTab('explore')}>Profile</Button>
@@ -1778,7 +1956,7 @@ const DashboardView = () => {
             {activeTab === 'explore' && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-zinc-900">
+                  <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
                     Find {profile?.role === 'creator' ? 'Promoters' : 'Creators'}
                   </h2>
                   {profile?.role === 'promoter' && (
@@ -1794,19 +1972,19 @@ const DashboardView = () => {
                     <input
                       type="text"
                       placeholder="Search by name..."
-                      className="w-full pl-12 pr-4 py-4 bg-white rounded-2xl border border-zinc-100 shadow-sm focus:ring-2 focus:ring-orange-600 outline-none transition-all"
+                      className="w-full pl-12 pr-4 py-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm focus:ring-2 focus:ring-orange-600 outline-none transition-all dark:text-white"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
                   
-                  <div className="flex flex-wrap gap-4 items-center bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm">
+                  <div className="flex flex-wrap gap-4 items-center bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
                     <div className="flex items-center gap-2">
                       <Filter size={18} className="text-zinc-400" />
-                      <span className="text-sm font-semibold text-zinc-600">Filters:</span>
+                      <span className="text-sm font-semibold text-zinc-600 dark:text-zinc-400">Filters:</span>
                     </div>
                     <select 
-                      className="px-3 py-2 bg-zinc-50 rounded-xl border border-zinc-100 text-sm outline-none focus:ring-2 focus:ring-orange-600"
+                      className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700 text-sm outline-none focus:ring-2 focus:ring-orange-600 dark:text-white"
                       value={nicheFilter}
                       onChange={(e) => setNicheFilter(e.target.value)}
                     >
@@ -1820,12 +1998,12 @@ const DashboardView = () => {
                     <input 
                       type="text" 
                       placeholder="Location"
-                      className="px-3 py-2 bg-zinc-50 rounded-xl border border-zinc-100 text-sm outline-none focus:ring-2 focus:ring-orange-600 w-32"
+                      className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700 text-sm outline-none focus:ring-2 focus:ring-orange-600 w-32 dark:text-white"
                       value={locationFilter}
                       onChange={(e) => setLocationFilter(e.target.value)}
                     />
                     <select 
-                      className="px-3 py-2 bg-zinc-50 rounded-xl border border-zinc-100 text-sm outline-none focus:ring-2 focus:ring-orange-600"
+                      className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700 text-sm outline-none focus:ring-2 focus:ring-orange-600 dark:text-white"
                       value={minRating}
                       onChange={(e) => setMinRating(e.target.value)}
                     >
@@ -1837,7 +2015,7 @@ const DashboardView = () => {
                     <input 
                       type="number" 
                       placeholder="Min. Followers"
-                      className="px-3 py-2 bg-zinc-50 rounded-xl border border-zinc-100 text-sm outline-none focus:ring-2 focus:ring-orange-600 w-32"
+                      className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700 text-sm outline-none focus:ring-2 focus:ring-orange-600 w-32 dark:text-white"
                       value={minFollowers}
                       onChange={(e) => setMinFollowers(e.target.value)}
                     />
@@ -1852,11 +2030,11 @@ const DashboardView = () => {
                       <motion.div key={u.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                         <Card className="p-6 hover:shadow-md transition-all group">
                           <div className="flex items-start justify-between mb-4">
-                            <img src={u.photoURL} className="w-16 h-16 rounded-2xl object-cover border border-zinc-100" referrerPolicy="no-referrer" />
+                            <img src={u.photoURL} className="w-16 h-16 rounded-2xl object-cover border border-zinc-100 dark:border-zinc-800" referrerPolicy="no-referrer" />
                             <div className="flex flex-col items-end gap-1">
                               <div className="flex gap-1 items-center">
                                 <Star size={14} className="text-yellow-400 fill-yellow-400" />
-                                <span className="text-xs font-bold text-zinc-600">{u.rating || '5.0'}</span>
+                                <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">{u.rating || '5.0'}</span>
                               </div>
                               <button 
                                 onClick={() => setRatingUser(u)}
@@ -1866,26 +2044,26 @@ const DashboardView = () => {
                               </button>
                             </div>
                           </div>
-                          <h3 className="text-lg font-bold text-zinc-900 mb-1">{u.displayName}</h3>
+                          <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">{u.displayName}</h3>
                           <div className="flex flex-wrap gap-2 mb-3">
-                            <span className="px-2 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[10px] font-bold uppercase tracking-wider">
+                            <span className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded text-[10px] font-bold uppercase tracking-wider">
                               {u.niche}
                             </span>
                             {u.location && (
-                              <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                              <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
                                 <MapPin size={10} /> {u.location}
                               </span>
                             )}
                           </div>
                           <div className="mb-4">
-                            <span className="text-xs text-zinc-400 font-medium">
+                            <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">
                               {(u.audienceSize || 0).toLocaleString()} followers
                             </span>
                           </div>
-                          <p className="text-sm text-zinc-500 line-clamp-2 mb-6 h-10">
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 mb-6 h-10">
                             {u.bio || "No bio provided yet."}
                           </p>
-                          <div className="flex items-center justify-between pt-4 border-t border-zinc-50">
+                          <div className="flex items-center justify-between pt-4 border-t border-zinc-50 dark:border-zinc-800">
                             <div className="flex gap-2">
                               <Instagram size={16} className="text-zinc-400 hover:text-orange-600 cursor-pointer" />
                               <Youtube size={16} className="text-zinc-400 hover:text-orange-600 cursor-pointer" />
@@ -1913,7 +2091,7 @@ const DashboardView = () => {
             {activeTab === 'requests' && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-zinc-900">Public Campaign Requests</h2>
+                  <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Public Campaign Requests</h2>
                   {profile?.role === 'promoter' && (
                     <Button onClick={() => setIsPublicRequestModalOpen(true)}>
                       <Plus size={18} /> Post Campaign
@@ -1926,19 +2104,36 @@ const DashboardView = () => {
                     publicRequests.filter(r => r.status === 'open').map((req) => (
                       <Card key={req.id} className="p-6 border-l-4 border-l-orange-600">
                         <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-lg font-bold text-zinc-900">{req.title}</h3>
-                            <p className="text-xs text-zinc-500">Posted by {req.promoterName}</p>
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={req.promoterPhoto || `https://picsum.photos/seed/${req.promoterId}/100/100`} 
+                              className="w-10 h-10 rounded-xl object-cover border border-zinc-100 dark:border-zinc-800" 
+                              referrerPolicy="no-referrer"
+                            />
+                            <div>
+                              <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{req.title}</h3>
+                              <div className="flex flex-col">
+                                <button 
+                                  onClick={() => setViewingUserId(req.promoterId)}
+                                  className="text-xs text-orange-600 dark:text-orange-500 hover:underline font-bold text-left"
+                                >
+                                  {req.promoterName}
+                                </button>
+                                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium">
+                                  {req.promoterRole || 'Promoter'} • {req.promoterEmail || 'Email hidden'}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <span className="px-2 py-1 bg-orange-50 text-orange-600 text-[10px] font-bold rounded uppercase">
+                          <span className="px-2 py-1 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 text-[10px] font-bold rounded uppercase">
                             {req.niche}
                           </span>
                         </div>
-                        <p className="text-sm text-zinc-600 mb-6 line-clamp-3">{req.description}</p>
-                        <div className="flex items-center justify-between pt-4 border-t border-zinc-50">
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6 line-clamp-3">{req.description}</p>
+                        <div className="flex items-center justify-between pt-4 border-t border-zinc-50 dark:border-zinc-800">
                           <div className="flex flex-col">
-                            <span className="text-[10px] text-zinc-400 font-bold uppercase">Budget</span>
-                            <span className="text-lg font-bold text-zinc-900">${req.budget}</span>
+                            <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase">Budget</span>
+                            <span className="text-lg font-bold text-zinc-900 dark:text-white">${req.budget}</span>
                           </div>
                           {profile?.role === 'creator' ? (
                             <Button 
@@ -1949,16 +2144,16 @@ const DashboardView = () => {
                               {acceptingRequestId === req.id ? 'Accepting...' : 'Accept Request'}
                             </Button>
                           ) : (
-                            <span className="text-xs text-zinc-400 italic">Creators only</span>
+                            <span className="text-xs text-zinc-400 dark:text-zinc-500 italic">Creators only</span>
                           )}
                         </div>
                       </Card>
                     ))
                   ) : (
-                    <div className="col-span-full text-center py-20 bg-white rounded-2xl border border-zinc-100">
-                      <Globe size={48} className="mx-auto text-zinc-200 mb-4" />
-                      <h3 className="text-lg font-bold text-zinc-900">No public requests found</h3>
-                      <p className="text-zinc-500">Check back later for new opportunities.</p>
+                    <div className="col-span-full text-center py-20 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                      <Globe size={48} className="mx-auto text-zinc-200 dark:text-zinc-800 mb-4" />
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-white">No public requests found</h3>
+                      <p className="text-zinc-500 dark:text-zinc-400">Check back later for new opportunities.</p>
                     </div>
                   )}
                 </div>
@@ -1967,28 +2162,36 @@ const DashboardView = () => {
 
             {activeTab === 'collaborations' && (
               <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-zinc-900 mb-6">Active Collaborations</h2>
+                <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-6">Active Collaborations</h2>
                 {collaborations.length > 0 ? (
                   collaborations.map((collab) => (
                     <Card key={collab.id} className="p-6">
                       <div className="flex flex-col md:flex-row justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-xl font-bold text-zinc-900">{collab.title}</h3>
+                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{collab.title}</h3>
                             <span className={cn(
                               "px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                              collab.status === 'pending' ? "bg-yellow-100 text-yellow-700 border border-yellow-200" :
-                              collab.status === 'accepted' ? "bg-green-100 text-green-700 border border-green-200" :
-                              collab.status === 'rejected' ? "bg-red-100 text-red-700 border border-red-200" :
-                              collab.status === 'completed' ? "bg-blue-100 text-blue-700 border border-blue-200" :
-                              "bg-zinc-100 text-zinc-700 border border-zinc-200"
+                              collab.status === 'pending' ? "bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800" :
+                              collab.status === 'accepted' ? "bg-green-100 text-green-700 border border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" :
+                              collab.status === 'rejected' ? "bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800" :
+                              collab.status === 'completed' ? "bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800" :
+                              "bg-zinc-100 text-zinc-700 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700"
                             )}>
                               {collab.status}
                             </span>
                           </div>
-                          <p className="text-zinc-600 text-sm mb-4">{collab.description}</p>
-                          <div className="flex items-center gap-4 text-xs text-zinc-400">
-                            <span className="flex items-center gap-1 font-bold text-zinc-900">
+                          <p className="text-zinc-600 dark:text-zinc-400 text-sm mb-4">{collab.description}</p>
+                          <div className="flex items-center gap-4 mb-4">
+                            <button 
+                              onClick={() => setViewingUserId(profile?.role === 'creator' ? collab.promoterId : collab.creatorId)}
+                              className="text-xs text-orange-600 dark:text-orange-500 hover:underline font-medium flex items-center gap-1"
+                            >
+                              <User size={12} /> View {profile?.role === 'creator' ? 'Promoter' : 'Creator'} Profile
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-zinc-400 dark:text-zinc-500">
+                            <span className="flex items-center gap-1 font-bold text-zinc-900 dark:text-white">
                               Budget: ${collab.budget}
                             </span>
                             <span>Created: {formatDate(collab.createdAt)}</span>
@@ -2002,19 +2205,19 @@ const DashboardView = () => {
                             </>
                           )}
                           {collab.status === 'accepted' && (
-                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => handleUpdateStatus(collab.id, 'completed')}>
+                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800" onClick={() => handleUpdateStatus(collab.id, 'completed')}>
                               Complete Task
                             </Button>
                           )}
-                          {collab.status === 'completed' && profile?.role === 'promoter' && (
+                          {collab.status === 'completed' && (
                             <Button size="sm" variant="outline" onClick={async () => {
-                              const targetId = collab.creatorId;
+                              const targetId = profile?.role === 'creator' ? collab.promoterId : collab.creatorId;
                               const targetDoc = await getDoc(doc(db, 'users', targetId));
                               if (targetDoc.exists()) {
                                 setRatingUser({ id: targetDoc.id, ...targetDoc.data() });
                               }
                             }}>
-                              <Star size={16} className="mr-1" /> Rate Creator
+                              <Star size={16} className="mr-1" /> Rate {profile?.role === 'creator' ? 'Promoter' : 'Creator'}
                             </Button>
                           )}
                           <Button variant="secondary" size="sm" onClick={() => { setSelectedCollab(collab); setActiveTab('messages'); }}>
@@ -2025,9 +2228,9 @@ const DashboardView = () => {
                     </Card>
                   ))
                 ) : (
-                  <div className="text-center py-20 bg-white rounded-2xl border border-zinc-100">
-                    <LayoutDashboard size={48} className="mx-auto text-zinc-200 mb-4" />
-                    <h3 className="text-lg font-bold text-zinc-900">No collaborations yet</h3>
+                  <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                    <LayoutDashboard size={48} className="mx-auto text-zinc-200 dark:text-zinc-800 mb-4" />
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white">No collaborations yet</h3>
                   </div>
                 )}
               </div>
@@ -2037,34 +2240,34 @@ const DashboardView = () => {
               selectedCollab ? (
                 <ChatView collaboration={selectedCollab} onClose={() => setSelectedCollab(null)} />
               ) : (
-                <div className="h-[calc(100vh-12rem)] bg-white rounded-2xl border border-zinc-100 flex flex-col overflow-hidden">
+                <div className="h-[calc(100vh-12rem)] bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex flex-col overflow-hidden">
                   <div className="flex-1 flex flex-col md:flex-row">
-                    <div className="w-full md:w-80 border-r border-zinc-100 overflow-y-auto">
-                      <div className="p-4 border-b border-zinc-100 font-bold text-zinc-900">Conversations</div>
+                    <div className="w-full md:w-80 border-r border-zinc-100 dark:border-zinc-800 overflow-y-auto">
+                      <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 font-bold text-zinc-900 dark:text-white">Conversations</div>
                       {collaborations.filter(c => c.status === 'accepted').map(c => (
                         <button
                           key={c.id}
                           onClick={() => setSelectedCollab(c)}
                           className={cn(
-                            "w-full p-4 text-left hover:bg-zinc-50 transition-colors border-b border-zinc-50",
-                            selectedCollab?.id === c.id && "bg-orange-50 border-orange-100"
+                            "w-full p-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors border-b border-zinc-50 dark:border-zinc-800",
+                            selectedCollab?.id === c.id && "bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-900/30"
                           )}
                         >
-                          <div className="font-bold text-zinc-900 text-sm truncate">{c.title}</div>
-                          <div className="text-xs text-zinc-500">Click to open chat</div>
+                          <div className="font-bold text-zinc-900 dark:text-white text-sm truncate">{c.title}</div>
+                          <div className="text-xs text-zinc-500 dark:text-zinc-400">Click to open chat</div>
                         </button>
                       ))}
                       {collaborations.filter(c => c.status === 'accepted').length === 0 && (
-                        <div className="p-8 text-center text-zinc-400 text-sm italic">
+                        <div className="p-8 text-center text-zinc-400 dark:text-zinc-500 text-sm italic">
                           No active chats. Accept a collaboration to start messaging.
                         </div>
                       )}
                     </div>
-                    <div className="flex-1 hidden md:flex items-center justify-center bg-zinc-50/30">
+                    <div className="flex-1 hidden md:flex items-center justify-center bg-zinc-50/30 dark:bg-zinc-950/30">
                       <div className="text-center">
-                        <MessageSquare size={48} className="mx-auto text-zinc-200 mb-4" />
-                        <h3 className="text-lg font-bold text-zinc-900">Your Inbox</h3>
-                        <p className="text-zinc-500">Select a conversation to start chatting.</p>
+                        <MessageSquare size={48} className="mx-auto text-zinc-200 dark:text-zinc-800 mb-4" />
+                        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Your Inbox</h3>
+                        <p className="text-zinc-500 dark:text-zinc-400">Select a conversation to start chatting.</p>
                       </div>
                     </div>
                   </div>
@@ -2076,9 +2279,9 @@ const DashboardView = () => {
               <div className="max-w-2xl mx-auto space-y-6">
                 <Card className="p-8">
                   <div className="flex flex-col items-center text-center mb-8">
-                    <img src={profile?.photoURL} className="w-24 h-24 rounded-3xl border-4 border-white shadow-xl mb-4" referrerPolicy="no-referrer" />
-                    <h2 className="text-3xl font-bold text-zinc-900">{profile?.displayName}</h2>
-                    <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded-full uppercase mt-2">
+                    <img src={profile?.photoURL} className="w-24 h-24 rounded-3xl border-4 border-white dark:border-zinc-800 shadow-xl mb-4" referrerPolicy="no-referrer" />
+                    <h2 className="text-3xl font-bold text-zinc-900 dark:text-white">{profile?.displayName}</h2>
+                    <span className="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-bold rounded-full uppercase mt-2">
                       {profile?.role}
                     </span>
                   </div>
@@ -2086,25 +2289,25 @@ const DashboardView = () => {
                   {/* Profile Content - Restricted for Promoters */}
                   <div className="space-y-6">
                     <div>
-                      <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Bio</label>
-                      <p className="text-zinc-700 mt-1">{profile?.bio || "No bio set."}</p>
+                      <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Bio</label>
+                      <p className="text-zinc-700 dark:text-zinc-300 mt-1">{profile?.bio || "No bio set."}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Niche</label>
-                      <p className="text-zinc-700 mt-1 font-semibold">{profile?.niche}</p>
+                      <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Niche</label>
+                      <p className="text-zinc-700 dark:text-zinc-300 mt-1 font-semibold">{profile?.niche}</p>
                     </div>
 
                     {profile?.role === 'creator' ? (
-                      <div className="pt-6 border-t border-zinc-100">
-                        <h3 className="text-sm font-bold text-zinc-900 mb-4">Portfolio & Stats</h3>
+                      <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800">
+                        <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-4">Portfolio & Stats</h3>
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
-                            <div className="text-xs font-bold text-zinc-400 uppercase mb-1">Engagement Rate</div>
-                            <div className="text-2xl font-bold text-orange-600">{profile?.engagementRate || '4.2'}%</div>
+                          <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700">
+                            <div className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1">Engagement Rate</div>
+                            <div className="text-2xl font-bold text-orange-600 dark:text-orange-500">{profile?.engagementRate || '4.2'}%</div>
                           </div>
-                          <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
-                            <div className="text-xs font-bold text-zinc-400 uppercase mb-1">Followers</div>
-                            <div className="text-2xl font-bold text-zinc-900">{(profile?.followersCount || 0).toLocaleString()}</div>
+                          <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700">
+                            <div className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1">Followers</div>
+                            <div className="text-2xl font-bold text-zinc-900 dark:text-white">{(profile?.followersCount || 0).toLocaleString()}</div>
                           </div>
                         </div>
                         
@@ -2114,35 +2317,35 @@ const DashboardView = () => {
                               href={profile.profileLink} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="flex items-center justify-between p-3 bg-white border border-zinc-100 rounded-xl hover:bg-zinc-50 transition-colors"
+                              className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                             >
                               <div className="flex items-center gap-3">
-                                <Globe size={18} className="text-blue-600" />
-                                <span className="text-sm font-medium">Main Profile Link</span>
+                                <Globe size={18} className="text-blue-600 dark:text-blue-400" />
+                                <span className="text-sm font-medium dark:text-zinc-300">Main Profile Link</span>
                               </div>
-                              <ExternalLink size={14} className="text-zinc-400" />
+                              <ExternalLink size={14} className="text-zinc-400 dark:text-zinc-500" />
                             </a>
                           )}
-                          <div className="flex items-center justify-between p-3 bg-white border border-zinc-100 rounded-xl">
+                          <div className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl">
                             <div className="flex items-center gap-3">
-                              <Instagram size={18} className="text-pink-600" />
-                              <span className="text-sm font-medium">Instagram</span>
+                              <Instagram size={18} className="text-pink-600 dark:text-pink-400" />
+                              <span className="text-sm font-medium dark:text-zinc-300">Instagram</span>
                             </div>
-                            <ExternalLink size={14} className="text-zinc-400" />
+                            <ExternalLink size={14} className="text-zinc-400 dark:text-zinc-500" />
                           </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="pt-6 border-t border-zinc-100">
-                        <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
-                          <p className="text-xs text-zinc-500 italic">
+                      <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800">
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-xl border border-zinc-100 dark:border-zinc-700">
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 italic">
                             As a Promoter, your profile focus is on campaign requirements and brand details. Full creator portfolios are available in the Explore tab.
                           </p>
                         </div>
                       </div>
                     )}
 
-                    <div className="pt-6 border-t border-zinc-100">
+                    <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800">
                       <Button variant="outline" className="w-full" onClick={() => setIsEditProfileModalOpen(true)}>Edit Profile</Button>
                     </div>
                   </div>
@@ -2152,33 +2355,33 @@ const DashboardView = () => {
                 <Card className="p-8">
                   <div className="flex items-center gap-3 mb-6">
                     <Bell className="text-orange-600" size={24} />
-                    <h3 className="text-xl font-bold text-zinc-900">Notification Settings</h3>
+                    <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Notification Settings</h3>
                   </div>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+                    <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700">
                       <div>
-                        <p className="font-bold text-zinc-900">In-App Notifications</p>
-                        <p className="text-xs text-zinc-500">Receive alerts within the platform</p>
+                        <p className="font-bold text-zinc-900 dark:text-white">In-App Notifications</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Receive alerts within the platform</p>
                       </div>
                       <div className="w-12 h-6 bg-orange-600 rounded-full relative cursor-pointer">
                         <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100 opacity-60">
+                    <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700 opacity-60">
                       <div>
-                        <p className="font-bold text-zinc-900">Email Notifications</p>
-                        <p className="text-xs text-zinc-500">Get updates in your inbox (Coming Soon)</p>
+                        <p className="font-bold text-zinc-900 dark:text-white">Email Notifications</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Get updates in your inbox (Coming Soon)</p>
                       </div>
-                      <div className="w-12 h-6 bg-zinc-200 rounded-full relative cursor-not-allowed">
+                      <div className="w-12 h-6 bg-zinc-200 dark:bg-zinc-700 rounded-full relative cursor-not-allowed">
                         <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100 opacity-60">
+                    <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700 opacity-60">
                       <div>
-                        <p className="font-bold text-zinc-900">Push Notifications</p>
-                        <p className="text-xs text-zinc-500">Browser push alerts (Coming Soon)</p>
+                        <p className="font-bold text-zinc-900 dark:text-white">Push Notifications</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Browser push alerts (Coming Soon)</p>
                       </div>
-                      <div className="w-12 h-6 bg-zinc-200 rounded-full relative cursor-not-allowed">
+                      <div className="w-12 h-6 bg-zinc-200 dark:bg-zinc-700 rounded-full relative cursor-not-allowed">
                         <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
                       </div>
                     </div>
@@ -2189,19 +2392,19 @@ const DashboardView = () => {
                 <Card className="p-8">
                   <div className="flex items-center gap-3 mb-6">
                     <Shield className="text-orange-600" size={24} />
-                    <h3 className="text-xl font-bold text-zinc-900">Security & 2FA</h3>
+                    <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Security & 2FA</h3>
                   </div>
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-bold text-zinc-900">Two-Factor Authentication</p>
-                        <p className="text-xs text-zinc-500">Add an extra layer of security to your account.</p>
+                        <p className="font-bold text-zinc-900 dark:text-white">Two-Factor Authentication</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Add an extra layer of security to your account.</p>
                       </div>
                       <button 
                         onClick={() => setIs2FAEnabled(!is2FAEnabled)}
                         className={cn(
                           "w-12 h-6 rounded-full transition-colors relative",
-                          is2FAEnabled ? "bg-green-500" : "bg-zinc-200"
+                          is2FAEnabled ? "bg-green-500" : "bg-zinc-200 dark:bg-zinc-700"
                         )}
                       >
                         <div className={cn(
@@ -2214,12 +2417,12 @@ const DashboardView = () => {
                       <motion.div 
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
-                        className="p-4 bg-green-50 border border-green-100 rounded-xl"
+                        className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-xl"
                       >
-                        <p className="text-xs text-green-800 font-medium mb-2">2FA is active via Email Verification.</p>
-                        <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-green-200">
-                          <span className="text-[10px] font-mono text-zinc-400 uppercase">Recovery Code</span>
-                          <span className="text-xs font-mono font-bold text-zinc-900">BO-92X-441-Z</span>
+                        <p className="text-xs text-green-800 dark:text-green-400 font-medium mb-2">2FA is active via Email Verification.</p>
+                        <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-2 rounded-lg border border-green-200 dark:border-green-800">
+                          <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase">Recovery Code</span>
+                          <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white">BO-92X-441-Z</span>
                         </div>
                       </motion.div>
                     )}
@@ -2253,6 +2456,12 @@ const DashboardView = () => {
         {isPublicRequestModalOpen && (
           <PublicRequestModal 
             onClose={() => setIsPublicRequestModalOpen(false)} 
+          />
+        )}
+        {viewingUserId && (
+          <UserProfileModal 
+            userId={viewingUserId} 
+            onClose={() => setViewingUserId(null)} 
           />
         )}
       </AnimatePresence>
@@ -2292,10 +2501,10 @@ const AppContent = () => {
   // Show a lighter loader if we're just fetching the profile but auth is already ready
   if (!isAuthReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-orange-100 border-t-orange-600 rounded-full animate-spin"></div>
-          <p className="text-zinc-500 font-medium animate-pulse">Initializing...</p>
+          <div className="w-12 h-12 border-4 border-orange-100 dark:border-orange-900/30 border-t-orange-600 rounded-full animate-spin"></div>
+          <p className="text-zinc-500 dark:text-zinc-400 font-medium animate-pulse">Initializing...</p>
         </div>
       </div>
     );
@@ -2304,10 +2513,10 @@ const AppContent = () => {
   // If auth is ready but profile is still loading, we can show a partial state or a smaller loader
   if (user && loading && !profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-orange-50 border-t-orange-600 rounded-full animate-spin"></div>
-          <p className="text-zinc-500 text-sm font-medium">
+          <div className="w-10 h-10 border-4 border-orange-50 dark:border-orange-900/20 border-t-orange-600 rounded-full animate-spin"></div>
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium">
             {user.displayName ? `Welcome back, ${user.displayName.split(' ')[0]}!` : "Loading your profile..."}
           </p>
         </div>
@@ -2342,9 +2551,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <Router>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ThemeProvider>
       </Router>
     </ErrorBoundary>
   );

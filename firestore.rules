@@ -164,8 +164,7 @@ service cloud.firestore {
 
     match /ratings/{ratingId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidRating(request.resource.data) && 
-                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'promoter';
+      allow create: if isAuthenticated() && isValidRating(request.resource.data);
       allow update, delete: if isAdmin();
     }
 
