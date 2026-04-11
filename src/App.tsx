@@ -29,7 +29,8 @@ import {
   Check,
   CheckCheck,
   Sun,
-  Moon
+  Moon,
+  Camera
 } from 'lucide-react';
 import { 
   BrowserRouter as Router, 
@@ -135,7 +136,7 @@ const Card = ({ children, className, ...props }: { children: React.ReactNode; cl
   </div>
 );
 
-const NotificationDropdown = ({ notifications, onClose, onMarkAsRead }: { notifications: any[], onClose: () => void, onMarkAsRead: (id: string) => void }) => {
+const NotificationDropdown = ({ notifications, onClose, onMarkAsRead, onTabChange }: { notifications: any[], onClose: () => void, onMarkAsRead: (id: string) => void, onTabChange?: (tab: string) => void }) => {
   return (
     <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden z-[100]">
       <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-800/50">
@@ -150,14 +151,19 @@ const NotificationDropdown = ({ notifications, onClose, onMarkAsRead }: { notifi
             <div 
               key={n.id} 
               className={cn(
-                "p-4 border-b border-zinc-50 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative",
+                "p-4 border-b border-zinc-50 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer relative group",
                 !n.read && "bg-orange-50/50 dark:bg-orange-900/10"
               )}
               onClick={() => {
                 onMarkAsRead(n.id);
+                if (onTabChange) {
+                  if (n.type === 'message') onTabChange('messages');
+                  else if (n.type === 'collaboration' || n.type === 'status') onTabChange('collaborations');
+                }
+                onClose();
               }}
             >
-              {!n.read && <div className="absolute top-4 right-4 w-2 h-2 bg-orange-600 rounded-full"></div>}
+              {!n.read && <div className="absolute top-4 right-4 w-2 h-2 bg-orange-600 rounded-full group-hover:scale-125 transition-transform"></div>}
               <div className="flex gap-3">
                 <div className={cn(
                   "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
@@ -188,7 +194,7 @@ const NotificationDropdown = ({ notifications, onClose, onMarkAsRead }: { notifi
   );
 };
 
-const Navbar = ({ onAuthRequired }: { onAuthRequired?: (mode: 'signin' | 'signup') => void }) => {
+const Navbar = ({ onAuthRequired, onTabChange }: { onAuthRequired?: (mode: 'signin' | 'signup') => void, onTabChange?: (tab: string) => void }) => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -264,11 +270,11 @@ const Navbar = ({ onAuthRequired }: { onAuthRequired?: (mode: 'signin' | 'signup
                 <div className="relative">
                   <button 
                     onClick={() => setIsNotifOpen(!isNotifOpen)}
-                    className="p-2 text-zinc-500 hover:bg-zinc-100 rounded-full transition-colors relative"
+                    className="p-2 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors relative"
                   >
                     <Bell size={20} />
                     {unreadCount > 0 && (
-                      <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-orange-600 rounded-full border-2 border-white text-[8px] text-white flex items-center justify-center font-bold">
+                      <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-orange-600 rounded-full border-2 border-white dark:border-zinc-900 text-[8px] text-white flex items-center justify-center font-bold">
                         {unreadCount}
                       </span>
                     )}
@@ -279,18 +285,33 @@ const Navbar = ({ onAuthRequired }: { onAuthRequired?: (mode: 'signin' | 'signup
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 top-full"
                       >
                         <NotificationDropdown 
                           notifications={notifications} 
                           onClose={() => setIsNotifOpen(false)}
                           onMarkAsRead={handleMarkAsRead}
+                          onTabChange={onTabChange}
                         />
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
-                <div className="flex items-center gap-2 pl-4 border-l border-zinc-100">
-                  <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} className="w-8 h-8 rounded-full border border-zinc-200" referrerPolicy="no-referrer" />
+                <div className="flex items-center gap-2 pl-4 border-l border-zinc-100 dark:border-zinc-800">
+                  <button 
+                    onClick={() => onTabChange?.('profile')}
+                    className="focus:outline-none focus:ring-2 focus:ring-orange-600 rounded-full transition-all hover:opacity-80"
+                    title="View Profile"
+                  >
+                    <img 
+                      src={profile?.photoURL || user.photoURL || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.email}`} 
+                      className="w-8 h-8 rounded-full border border-zinc-200 dark:border-zinc-700 object-cover" 
+                      referrerPolicy="no-referrer" 
+                      onError={(e) => {
+                        e.currentTarget.src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.email}`;
+                      }}
+                    />
+                  </button>
                   <Button variant="ghost" size="sm" onClick={handleLogout}>
                     <LogOut size={16} />
                   </Button>
@@ -525,7 +546,7 @@ const AuthModal = ({
             disabled={loading}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all font-medium text-zinc-700 dark:text-zinc-300"
           >
-            <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+            <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" referrerPolicy="no-referrer" />
             Google
           </button>
 
@@ -606,22 +627,22 @@ const LandingView = ({ onJoin }: { onJoin: (role: 'creator' | 'promoter' | null,
       </section>
 
       {/* Features */}
-      <section className="py-24 bg-zinc-50">
+      <section className="py-24 bg-zinc-50 dark:bg-zinc-900/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
-                icon: <Search className="text-orange-600" />,
+                icon: <Search className="text-orange-600 dark:text-orange-500" />,
                 title: "Smart Discovery",
                 desc: "Find partners based on niche, audience size, and engagement metrics."
               },
               {
-                icon: <MessageSquare className="text-orange-600" />,
+                icon: <MessageSquare className="text-orange-600 dark:text-orange-500" />,
                 title: "Direct Messaging",
                 desc: "Secure, in-app communication to discuss deals and campaign details."
               },
               {
-                icon: <CheckCircle2 className="text-orange-600" />,
+                icon: <CheckCircle2 className="text-orange-600 dark:text-orange-500" />,
                 title: "Verified Profiles",
                 desc: "Build trust with ratings, reviews, and verified platform connections."
               }
@@ -634,11 +655,11 @@ const LandingView = ({ onJoin }: { onJoin: (role: 'creator' | 'promoter' | null,
                 transition={{ delay: i * 0.1 }}
               >
                 <Card className="p-8 h-full hover:shadow-md transition-shadow">
-                  <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mb-6">
+                  <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center mb-6">
                     {feature.icon}
                   </div>
-                  <h3 className="text-xl font-bold text-zinc-900 mb-3">{feature.title}</h3>
-                  <p className="text-zinc-600 leading-relaxed">{feature.desc}</p>
+                  <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-3">{feature.title}</h3>
+                  <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">{feature.desc}</p>
                 </Card>
               </motion.div>
             ))}
@@ -658,6 +679,7 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
   const [location, setLocation] = useState('');
   const [followersCount, setFollowersCount] = useState('');
   const [profileLink, setProfileLink] = useState('');
+  const [photoURL, setPhotoURL] = useState(user?.photoURL || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.email || Math.random()}`);
   const [loading, setLoading] = useState(false);
 
   const totalSteps = 3;
@@ -671,7 +693,7 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
-        photoURL: user.photoURL,
+        photoURL,
         role,
         niche,
         bio,
@@ -692,6 +714,14 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
       setLoading(false);
     }
   };
+
+  const randomAvatars = [
+    `https://api.dicebear.com/9.x/avataaars/svg?seed=Felix`,
+    `https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka`,
+    `https://api.dicebear.com/9.x/avataaars/svg?seed=Max`,
+    `https://api.dicebear.com/9.x/avataaars/svg?seed=Luna`,
+    `https://api.dicebear.com/9.x/avataaars/svg?seed=Oliver`,
+  ];
 
   const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
@@ -785,6 +815,47 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
                 className="space-y-6"
               >
                 <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Profile Photo</label>
+                    <div className="flex flex-wrap gap-3 mb-4">
+                      {randomAvatars.map((url, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setPhotoURL(url)}
+                          className={cn(
+                            "w-12 h-12 rounded-xl overflow-hidden border-2 transition-all",
+                            photoURL === url ? "border-orange-600 scale-110 shadow-lg" : "border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
+                          )}
+                        >
+                          <img src={url} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setPhotoURL(user?.photoURL || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.email}`)}
+                        className={cn(
+                          "w-12 h-12 rounded-xl overflow-hidden border-2 transition-all flex items-center justify-center bg-zinc-100 dark:bg-zinc-800",
+                          photoURL === user?.photoURL ? "border-orange-600 scale-110 shadow-lg" : "border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
+                        )}
+                        title="Use Google Photo"
+                      >
+                        {user?.photoURL ? (
+                          <img src={user.photoURL} alt="Google" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <Users size={20} className="text-zinc-400" />
+                        )}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Camera className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                      <input
+                        type="url"
+                        placeholder="Or paste image URL..."
+                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none transition-all"
+                        value={photoURL}
+                        onChange={(e) => setPhotoURL(e.target.value)}
+                      />
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Your Niche</label>
                     <input
@@ -963,7 +1034,7 @@ const CollaborationModal = ({ targetUser, onClose }: { targetUser: any; onClose:
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Budget ($)</label>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Budget (₹)</label>
                 <input
                   type="number"
                   placeholder="0.00"
@@ -973,7 +1044,7 @@ const CollaborationModal = ({ targetUser, onClose }: { targetUser: any; onClose:
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Min. Budget ($)</label>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Min. Budget (₹)</label>
                 <input
                   type="number"
                   placeholder="0.00"
@@ -1052,7 +1123,14 @@ const UserProfileModal = ({ userId, onClose }: { userId: string; onClose: () => 
         <div className="p-8">
           <div className="flex justify-between items-start mb-6">
             <div className="flex items-center gap-4">
-              <img src={userProfile.photoURL} className="w-16 h-16 rounded-2xl object-cover border-2 border-zinc-100 dark:border-zinc-800" referrerPolicy="no-referrer" />
+              <img 
+                src={userProfile.photoURL} 
+                className="w-16 h-16 rounded-2xl object-cover border-2 border-zinc-100 dark:border-zinc-800" 
+                referrerPolicy="no-referrer" 
+                onError={(e) => {
+                  e.currentTarget.src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${userProfile.email || 'default'}`;
+                }}
+              />
               <div>
                 <h3 className="text-2xl font-bold text-zinc-900 dark:text-white">{userProfile.displayName}</h3>
                 <div className="flex items-center gap-2 mb-1">
@@ -1231,7 +1309,7 @@ const PublicRequestModal = ({ onClose }: { onClose: () => void }) => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Budget ($)</label>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Budget (₹)</label>
                 <input
                   type="number"
                   placeholder="0.00"
@@ -1429,15 +1507,15 @@ const ChatView = ({ collaboration, onClose }: { collaboration: any; onClose: () 
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)] bg-white rounded-2xl border border-zinc-100 overflow-hidden">
-      <div className="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
+    <div className="flex flex-col h-[calc(100vh-12rem)] bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden">
+      <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-800/50">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={onClose} className="md:hidden">
             <Plus className="rotate-45" size={20} />
           </Button>
-          <h3 className="font-bold text-zinc-900">{collaboration.title}</h3>
+          <h3 className="font-bold text-zinc-900 dark:text-white">{collaboration.title}</h3>
         </div>
-        <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded-full uppercase">
+        <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-bold rounded-full uppercase">
           {collaboration.status}
         </span>
       </div>
@@ -1451,7 +1529,7 @@ const ChatView = ({ collaboration, onClose }: { collaboration: any; onClose: () 
             <React.Fragment key={msg.id}>
               {showDate && (
                 <div className="flex justify-center my-4">
-                  <span className="px-3 py-1 bg-zinc-100 text-zinc-500 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                  <span className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-[10px] font-bold rounded-full uppercase tracking-wider">
                     {formatDate(msg.createdAt)}
                   </span>
                 </div>
@@ -1459,19 +1537,19 @@ const ChatView = ({ collaboration, onClose }: { collaboration: any; onClose: () 
               <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
                 <div className={cn(
                   "max-w-[75%] p-3 rounded-2xl text-sm shadow-sm",
-                  isMe ? "bg-orange-600 text-white rounded-tr-none" : "bg-zinc-100 text-zinc-800 rounded-tl-none"
+                  isMe ? "bg-orange-600 text-white rounded-tr-none" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-tl-none"
                 )}>
                   {msg.text}
                 </div>
                 <div className={cn("flex items-center gap-1 mt-1 px-1", isMe ? "flex-row-reverse" : "flex-row")}>
-                  <span className="text-[10px] text-zinc-400 font-medium">
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium">
                     {formatChatTime(msg.createdAt)}
                   </span>
                   {isMe && (
                     msg.seen ? (
                       <CheckCheck size={12} className="text-blue-500" />
                     ) : (
-                      <Check size={12} className="text-zinc-300" />
+                      <Check size={12} className="text-zinc-300 dark:text-zinc-600" />
                     )
                   )}
                 </div>
@@ -1481,11 +1559,11 @@ const ChatView = ({ collaboration, onClose }: { collaboration: any; onClose: () 
         })}
       </div>
 
-      <form onSubmit={handleSend} className="p-4 border-t border-zinc-100 flex gap-2 bg-zinc-50/30">
+      <form onSubmit={handleSend} className="p-4 border-t border-zinc-100 dark:border-zinc-800 flex gap-2 bg-zinc-50/30 dark:bg-zinc-800/30">
         <input
           type="text"
           placeholder="Type a message..."
-          className="flex-1 px-4 py-2 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none bg-white"
+          className="flex-1 px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-orange-600 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
         />
@@ -1502,6 +1580,7 @@ const EditProfileModal = ({ profile, onClose }: { profile: any; onClose: () => v
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     displayName: profile?.displayName || '',
+    photoURL: profile?.photoURL || '',
     bio: profile?.bio || '',
     niche: profile?.niche || '',
     followersCount: profile?.followersCount || 0,
@@ -1509,6 +1588,14 @@ const EditProfileModal = ({ profile, onClose }: { profile: any; onClose: () => v
     audienceSize: profile?.audienceSize || 0,
     engagementRate: profile?.engagementRate || 0,
   });
+
+  const randomAvatars = [
+    `https://api.dicebear.com/9.x/avataaars/svg?seed=Felix`,
+    `https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka`,
+    `https://api.dicebear.com/9.x/avataaars/svg?seed=Max`,
+    `https://api.dicebear.com/9.x/avataaars/svg?seed=Luna`,
+    `https://api.dicebear.com/9.x/avataaars/svg?seed=Oliver`,
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1534,44 +1621,88 @@ const EditProfileModal = ({ profile, onClose }: { profile: any; onClose: () => v
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden my-8"
+        className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden my-8"
       >
         <div className="p-8">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h3 className="text-2xl font-bold text-zinc-900">Edit Profile</h3>
-              <p className="text-zinc-500">Update your details for better visibility</p>
+              <h3 className="text-2xl font-bold text-zinc-900 dark:text-white">Edit Profile</h3>
+              <p className="text-zinc-500 dark:text-zinc-400">Update your details for better visibility</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-              <Plus className="rotate-45 text-zinc-400" size={24} />
+            <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+              <Plus className="rotate-45 text-zinc-400 dark:text-zinc-500" size={24} />
             </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Display Name</label>
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Profile Photo</label>
+              <div className="flex flex-wrap gap-3 mb-4">
+                {randomAvatars.map((url, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, photoURL: url })}
+                    className={cn(
+                      "w-12 h-12 rounded-xl overflow-hidden border-2 transition-all",
+                      formData.photoURL === url ? "border-orange-600 scale-110 shadow-lg" : "border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
+                    )}
+                  >
+                    <img src={url} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, photoURL: user?.photoURL || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.email}` })}
+                  className={cn(
+                    "w-12 h-12 rounded-xl overflow-hidden border-2 transition-all flex items-center justify-center bg-zinc-100 dark:bg-zinc-800",
+                    formData.photoURL === user?.photoURL ? "border-orange-600 scale-110 shadow-lg" : "border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
+                  )}
+                  title="Use Google Photo"
+                >
+                  {user?.photoURL ? (
+                    <img src={user.photoURL} alt="Google" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <Users size={20} className="text-zinc-400" />
+                  )}
+                </button>
+              </div>
+              <div className="relative">
+                <Camera className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                <input
+                  type="url"
+                  placeholder="Or paste image URL..."
+                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none transition-all"
+                  value={formData.photoURL}
+                  onChange={(e) => setFormData({ ...formData, photoURL: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Display Name</label>
               <input
                 type="text"
                 required
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                 value={formData.displayName}
                 onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Bio</label>
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Bio</label>
               <textarea
                 rows={3}
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none resize-none"
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none resize-none"
                 value={formData.bio}
                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Niche</label>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Niche</label>
                 <select
-                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                   value={formData.niche}
                   onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
                 >
@@ -1584,21 +1715,21 @@ const EditProfileModal = ({ profile, onClose }: { profile: any; onClose: () => v
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Followers Count</label>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Followers Count</label>
                 <input
                   type="number"
-                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                   value={formData.followersCount}
                   onChange={(e) => setFormData({ ...formData, followersCount: Number(e.target.value) })}
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Profile Link (Instagram/YouTube)</label>
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Profile Link (Instagram/YouTube)</label>
               <input
                 type="url"
                 placeholder="https://..."
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                 value={formData.profileLink}
                 onChange={(e) => setFormData({ ...formData, profileLink: e.target.value })}
               />
@@ -1606,20 +1737,20 @@ const EditProfileModal = ({ profile, onClose }: { profile: any; onClose: () => v
             {profile?.role === 'creator' && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Audience Size</label>
+                  <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Audience Size</label>
                   <input
                     type="number"
-                    className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                    className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                     value={formData.audienceSize}
                     onChange={(e) => setFormData({ ...formData, audienceSize: Number(e.target.value) })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Engagement Rate (%)</label>
+                  <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Engagement Rate (%)</label>
                   <input
                     type="number"
                     step="0.1"
-                    className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-600 outline-none"
+                    className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-600 outline-none"
                     value={formData.engagementRate}
                     onChange={(e) => setFormData({ ...formData, engagementRate: Number(e.target.value) })}
                   />
@@ -1799,7 +1930,7 @@ const DashboardView = () => {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors">
-      <Navbar />
+      <Navbar onTabChange={setActiveTab} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row gap-8">
@@ -1859,6 +1990,25 @@ const DashboardView = () => {
             >
               <User size={20} /> My Profile
             </button>
+
+            <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                <div className="flex items-center gap-3">
+                  <img 
+                    src={profile?.photoURL || user?.photoURL || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.email}`} 
+                    className="w-10 h-10 rounded-lg object-cover border border-zinc-100 dark:border-zinc-800" 
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.email || 'default'}`;
+                    }}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{profile?.displayName || user?.displayName}</p>
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-wider">{profile?.role}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </aside>
 
           {/* Main Content */}
@@ -1938,7 +2088,14 @@ const DashboardView = () => {
                       {users.slice(0, 3).map(u => (
                         <div key={u.id} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
                           <div className="flex items-center gap-3">
-                            <img src={u.photoURL} className="w-10 h-10 rounded-lg object-cover" />
+                            <img 
+                              src={u.photoURL} 
+                              className="w-10 h-10 rounded-lg object-cover" 
+                              referrerPolicy="no-referrer" 
+                              onError={(e) => {
+                                e.currentTarget.src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${u.email || 'default'}`;
+                              }}
+                            />
                             <div>
                               <p className="text-sm font-bold text-zinc-900 dark:text-white">{u.displayName}</p>
                               <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-bold">{u.niche}</p>
@@ -2030,7 +2187,14 @@ const DashboardView = () => {
                       <motion.div key={u.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                         <Card className="p-6 hover:shadow-md transition-all group">
                           <div className="flex items-start justify-between mb-4">
-                            <img src={u.photoURL} className="w-16 h-16 rounded-2xl object-cover border border-zinc-100 dark:border-zinc-800" referrerPolicy="no-referrer" />
+                            <img 
+                              src={u.photoURL} 
+                              className="w-16 h-16 rounded-2xl object-cover border border-zinc-100 dark:border-zinc-800" 
+                              referrerPolicy="no-referrer" 
+                              onError={(e) => {
+                                e.currentTarget.src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${u.email || 'default'}`;
+                              }}
+                            />
                             <div className="flex flex-col items-end gap-1">
                               <div className="flex gap-1 items-center">
                                 <Star size={14} className="text-yellow-400 fill-yellow-400" />
@@ -2079,9 +2243,10 @@ const DashboardView = () => {
                       </motion.div>
                     ))
                   ) : (
-                    <div className="col-span-full text-center py-20 bg-white rounded-2xl border border-zinc-100">
-                      <Users size={48} className="mx-auto text-zinc-200 mb-4" />
-                      <h3 className="text-lg font-bold text-zinc-900">No matches found</h3>
+                    <div className="col-span-full text-center py-20 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                      <Users size={48} className="mx-auto text-zinc-200 dark:text-zinc-800 mb-4" />
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-white">No matches found</h3>
+                      <p className="text-zinc-500 dark:text-zinc-400">Try adjusting your filters or search query.</p>
                     </div>
                   )}
                 </div>
@@ -2109,6 +2274,9 @@ const DashboardView = () => {
                               src={req.promoterPhoto || `https://picsum.photos/seed/${req.promoterId}/100/100`} 
                               className="w-10 h-10 rounded-xl object-cover border border-zinc-100 dark:border-zinc-800" 
                               referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                e.currentTarget.src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${req.promoterId}`;
+                              }}
                             />
                             <div>
                               <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{req.title}</h3>
@@ -2133,7 +2301,7 @@ const DashboardView = () => {
                         <div className="flex items-center justify-between pt-4 border-t border-zinc-50 dark:border-zinc-800">
                           <div className="flex flex-col">
                             <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase">Budget</span>
-                            <span className="text-lg font-bold text-zinc-900 dark:text-white">${req.budget}</span>
+                            <span className="text-lg font-bold text-zinc-900 dark:text-white">₹{req.budget}</span>
                           </div>
                           {profile?.role === 'creator' ? (
                             <Button 
@@ -2192,7 +2360,7 @@ const DashboardView = () => {
                           </div>
                           <div className="flex items-center gap-4 text-xs text-zinc-400 dark:text-zinc-500">
                             <span className="flex items-center gap-1 font-bold text-zinc-900 dark:text-white">
-                              Budget: ${collab.budget}
+                              Budget: ₹{collab.budget}
                             </span>
                             <span>Created: {formatDate(collab.createdAt)}</span>
                           </div>
@@ -2279,7 +2447,14 @@ const DashboardView = () => {
               <div className="max-w-2xl mx-auto space-y-6">
                 <Card className="p-8">
                   <div className="flex flex-col items-center text-center mb-8">
-                    <img src={profile?.photoURL} className="w-24 h-24 rounded-3xl border-4 border-white dark:border-zinc-800 shadow-xl mb-4" referrerPolicy="no-referrer" />
+                    <img 
+                      src={profile?.photoURL} 
+                      className="w-24 h-24 rounded-3xl border-4 border-white dark:border-zinc-800 shadow-xl mb-4" 
+                      referrerPolicy="no-referrer" 
+                      onError={(e) => {
+                        e.currentTarget.src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.email || 'default'}`;
+                      }}
+                    />
                     <h2 className="text-3xl font-bold text-zinc-900 dark:text-white">{profile?.displayName}</h2>
                     <span className="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-bold rounded-full uppercase mt-2">
                       {profile?.role}
