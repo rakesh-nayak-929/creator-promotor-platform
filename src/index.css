@@ -3,3 +3,10 @@
 @theme {
   --dark-mode: selector;
 }
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Ensure dark mode works correctly in all environments */
+:root.dark {
+  color-scheme: dark;
+}

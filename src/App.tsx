@@ -726,6 +726,21 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
   const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("File is too large. Please choose an image under 2MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoURL(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-4 transition-colors">
       <motion.div 
@@ -844,6 +859,10 @@ const OnboardingView = ({ initialRole }: { initialRole: 'creator' | 'promoter' |
                           <Users size={20} className="text-zinc-400" />
                         )}
                       </button>
+                      <label className="w-12 h-12 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 hover:border-orange-600 dark:hover:border-orange-500 transition-all flex items-center justify-center cursor-pointer group">
+                        <Plus size={20} className="text-zinc-400 group-hover:text-orange-600" />
+                        <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                      </label>
                     </div>
                     <div className="relative">
                       <Camera className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
@@ -1589,6 +1608,21 @@ const EditProfileModal = ({ profile, onClose }: { profile: any; onClose: () => v
     engagementRate: profile?.engagementRate || 0,
   });
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("File is too large. Please choose an image under 2MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, photoURL: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const randomAvatars = [
     `https://api.dicebear.com/9.x/avataaars/svg?seed=Felix`,
     `https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka`,
@@ -1666,6 +1700,10 @@ const EditProfileModal = ({ profile, onClose }: { profile: any; onClose: () => v
                     <Users size={20} className="text-zinc-400" />
                   )}
                 </button>
+                <label className="w-12 h-12 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 hover:border-orange-600 dark:hover:border-orange-500 transition-all flex items-center justify-center cursor-pointer group">
+                  <Plus size={20} className="text-zinc-400 group-hover:text-orange-600" />
+                  <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                </label>
               </div>
               <div className="relative">
                 <Camera className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
